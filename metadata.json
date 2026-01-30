@@ -1,0 +1,9 @@
+{
+  "name": "Gemini Sight - Real-Time Audio Navigator",
+  "description": "An AI-powered assistive tool for the visually impaired that provides real-time audio descriptions of surroundings, obstacle detection, and navigation guidance using Gemini Live API.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
