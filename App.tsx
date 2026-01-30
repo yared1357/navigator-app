@@ -6,7 +6,6 @@ import { decodeBase64, decodeAudioData, createPcmBlob } from './utils/audioUtils
 
 // Using Flash-based models for maximum compatibility with free-tier plans
 const LIVE_MODEL = 'gemini-2.5-flash-native-audio-preview-12-2025';
-const SCAN_MODEL = 'gemini-3-flash-preview';
 
 const API_KEYS = (process.env.API_KEYS as unknown as string[]) || [];
 
@@ -253,56 +252,7 @@ const App: React.FC = () => {
     }
   };
 
-  const performSafetyScan = async (retryAttempt = 0) => {
-    if (!videoRef.current || !canvasRef.current) return;
-    setStatus(AppStatus.PRO_SCANNING);
-    setGroundingLinks([]);
-    try {
-      const canvas = canvasRef.current;
-      const video = videoRef.current;
-      canvas.width = 1280;
-      canvas.height = 720;
-      canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const base64Data = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
 
-      const ai = new GoogleGenAI({ apiKey: API_KEYS[keyIndexRef.current] });
-      const response = await ai.models.generateContent({
-        model: SCAN_MODEL,
-        contents: {
-          parts: [
-            { inlineData: { data: base64Data, mimeType: 'image/jpeg' } },
-            { text: "Detailed navigation scan. Identify hazards and provide direct safety advice. Use Google Search for location context if landmarks are visible." }
-          ]
-        },
-        config: { tools: [{ googleSearch: {} }] }
-      });
-
-      const text = response.text || "Scan complete.";
-      setTranscriptions(prev => [...prev, { role: 'model', text: `[SAFETY SCAN] ${text}`, timestamp: Date.now() }]);
-
-      const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
-      if (chunks) {
-        const links = chunks.map((c: any) => ({ title: c.web?.title || 'Source', uri: c.web?.uri || '' })).filter((l: any) => l.uri);
-        setGroundingLinks(links);
-      }
-
-      const utterance = new SpeechSynthesisUtterance(text.substring(0, 300));
-      window.speechSynthesis.speak(utterance);
-    } catch (err) {
-      console.warn(`Scan failed with key index ${keyIndexRef.current}`, err);
-      if (retryAttempt < API_KEYS.length) {
-        keyIndexRef.current = (keyIndexRef.current + 1) % API_KEYS.length;
-        console.log(`Rotating to key index ${keyIndexRef.current} and retrying scan...`);
-        await performSafetyScan(retryAttempt + 1);
-        return;
-      }
-      setError("Safety scan failed.");
-    } finally {
-      if (retryAttempt >= API_KEYS.length || status !== AppStatus.PRO_SCANNING) {
-        setStatus(AppStatus.ACTIVE);
-      }
-    }
-  };
 
   return (
     <div className="min-h-screen flex flex-col items-center p-4 md:p-10 space-y-8 bg-slate-950 text-white font-sans selection:bg-yellow-500 selection:text-black">
@@ -348,14 +298,7 @@ const App: React.FC = () => {
               </div>
             )}
 
-            {status === AppStatus.PRO_SCANNING && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-xl z-20">
-                <div className="w-20 h-20 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin mb-6"></div>
-                <p className="text-3xl font-black text-yellow-500 uppercase tracking-tighter text-center">
-                  Scanning Hazards...
-                </p>
-              </div>
-            )}
+
 
             {status === AppStatus.ACTIVE && (
               <div className="absolute top-6 left-6 flex items-center space-x-3 bg-red-600/20 backdrop-blur-md border border-red-500/30 px-4 py-2 rounded-full animate-pulse">
@@ -365,15 +308,7 @@ const App: React.FC = () => {
             )}
           </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button
-              disabled={status !== AppStatus.ACTIVE}
-              onClick={performSafetyScan}
-              className="h-24 bg-slate-900 border-2 border-yellow-500/20 hover:border-yellow-500 rounded-[2rem] flex flex-col items-center justify-center transition-all disabled:opacity-20 active:scale-95 group"
-            >
-              <svg className="w-8 h-8 text-yellow-500 mb-1 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-              <span className="text-[10px] font-black uppercase tracking-widest">Detailed Scan</span>
-            </button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <button
               onClick={() => setIsMuted(!isMuted)}
               disabled={status === AppStatus.IDLE}
