@@ -12,10 +12,10 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     define: {
       'process.env.API_KEYS': JSON.stringify([
-        env.GEMINI_API_KEY_1,
-        env.GEMINI_API_KEY_2,
-        env.GEMINI_API_KEY_3,
-        env.GEMINI_API_KEY_4
+        env.VITE_GEMINI_API_KEY_1,
+        env.VITE_GEMINI_API_KEY_2,
+        env.VITE_GEMINI_API_KEY_3,
+        env.VITE_GEMINI_API_KEY_4
       ]),
     },
     resolve: {
