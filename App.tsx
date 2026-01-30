@@ -7,7 +7,12 @@ import { decodeBase64, decodeAudioData, createPcmBlob } from './utils/audioUtils
 // Using Flash-based models for maximum compatibility with free-tier plans
 const LIVE_MODEL = 'gemini-2.5-flash-native-audio-preview-12-2025';
 
-const API_KEYS = (process.env.API_KEYS as unknown as string[]) || [];
+const API_KEYS = [
+  import.meta.env.VITE_GEMINI_API_KEY_1,
+  import.meta.env.VITE_GEMINI_API_KEY_2,
+  import.meta.env.VITE_GEMINI_API_KEY_3,
+  import.meta.env.VITE_GEMINI_API_KEY_4
+].filter(key => key && key !== 'your_api_key_here'); // Filter out undefined and placeholder values
 
 const SYSTEM_INSTRUCTION = `You are a proactive Navigation Problem Solver for the visually impaired.
 Your primary role is to give direct, immediate guidance based on the video feed.
@@ -87,6 +92,13 @@ const App: React.FC = () => {
   }, [status]);
 
   useEffect(() => {
+    // Check if API keys are available
+    if (API_KEYS.length === 0) {
+      setError("API keys not configured. Please set VITE_GEMINI_API_KEY_1, VITE_GEMINI_API_KEY_2, VITE_GEMINI_API_KEY_3, and VITE_GEMINI_API_KEY_4 environment variables.");
+      setStatus(AppStatus.NEEDS_KEY);
+      return;
+    }
+
     // For free plan, we bypass the paid key check and start the wake listener
     startWakeWordListener();
     return () => {
@@ -114,11 +126,22 @@ const App: React.FC = () => {
 
   const startSession = async (retryAttempt = 0) => {
     try {
+      // Check if API keys are available
+      if (API_KEYS.length === 0) {
+        setError("API keys not configured. Please set VITE_GEMINI_API_KEY_1, VITE_GEMINI_API_KEY_2, VITE_GEMINI_API_KEY_3, and VITE_GEMINI_API_KEY_4 environment variables.");
+        setStatus(AppStatus.NEEDS_KEY);
+        return;
+      }
+
       setStatus(AppStatus.CONNECTING);
       setError(null);
       intervalsRef.current.wakeWordRecognition?.stop();
 
       const apiKey = API_KEYS[keyIndexRef.current];
+      if (!apiKey) {
+        throw new Error("No valid API key available");
+      }
+
       const ai = new GoogleGenAI({ apiKey });
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: true,
@@ -295,6 +318,22 @@ const App: React.FC = () => {
                   <svg className="w-16 h-16 text-black group-hover:animate-pulse" fill="currentColor" viewBox="0 0 20 20"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" /></svg>
                 </button>
                 <p className="mt-8 text-2xl font-black text-yellow-500 tracking-widest uppercase text-center px-4">Activate Eyes<br /><span className="text-sm font-medium text-slate-400">or say "Activate Eyes"</span></p>
+              </div>
+            )}
+
+            {status === AppStatus.NEEDS_KEY && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/90 backdrop-blur-md">
+                <div className="w-20 h-20 border-4 border-red-500 border-t-transparent rounded-full animate-spin mb-6"></div>
+                <p className="text-3xl font-black text-red-500 uppercase tracking-tighter text-center px-4">
+                  API Keys Required
+                </p>
+                <p className="mt-4 text-sm text-slate-400 text-center max-w-md">
+                  Please configure your Gemini API keys in the environment variables.
+                  <br />
+                  <span className="text-xs text-slate-500 mt-2 block">
+                    VITE_GEMINI_API_KEY_1, VITE_GEMINI_API_KEY_2, VITE_GEMINI_API_KEY_3, VITE_GEMINI_API_KEY_4
+                  </span>
+                </p>
               </div>
             )}
 

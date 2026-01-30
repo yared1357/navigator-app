@@ -10,14 +10,6 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0',
     },
     plugins: [react()],
-    define: {
-      'process.env.API_KEYS': JSON.stringify([
-        env.VITE_GEMINI_API_KEY_1,
-        env.VITE_GEMINI_API_KEY_2,
-        env.VITE_GEMINI_API_KEY_3,
-        env.VITE_GEMINI_API_KEY_4
-      ]),
-    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
