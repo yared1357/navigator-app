@@ -143,15 +143,45 @@ const App: React.FC = () => {
       }
 
       const ai = new GoogleGenAI({ apiKey });
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: { facingMode: 'environment', width: 640, height: 480 }
-      });
+      const getMediaStream = async () => {
+        const constraints = {
+          audio: true,
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+          }
+        };
 
-      if (videoRef.current) videoRef.current.srcObject = stream;
+        try {
+          return await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (e) {
+          console.warn('Failed to get environment camera, falling back to any camera', e);
+          return await navigator.mediaDevices.getUserMedia({
+            audio: true,
+            video: true
+          });
+        }
+      };
+
+      const stream = await getMediaStream();
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        // Explicitly call play() which is often required on mobile
+        try {
+          await videoRef.current.play();
+        } catch (playError) {
+          console.error('Error starting video playback:', playError);
+        }
+      }
 
       const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
       const outputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+
+      // Resume contexts - essential for mobile Safari/Chrome
+      await inputCtx.resume();
+      await outputCtx.resume();
 
       audioContextRef.current = { input: inputCtx, output: outputCtx, nextStartTime: 0, sources: new Set() };
 
@@ -186,7 +216,8 @@ const App: React.FC = () => {
             if (canvas && video) {
               const ctx = canvas.getContext('2d');
               intervalsRef.current.frameInterval = window.setInterval(() => {
-                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                // Looser check for readyState to support more mobile browsers
+                if (video.readyState >= 2) {
                   canvas.width = 320;
                   canvas.height = 240;
                   ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
